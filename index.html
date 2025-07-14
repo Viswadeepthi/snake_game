@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Snake Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      border: 3px solid #0f0;
+      box-shadow: 0 0 20px #0f0;
+      background-color: #111;
+    }
+    .info {
+      margin: 20px;
+      text-align: center;
+    }
+    .controls button {
+      padding: 10px 20px;
+      margin: 10px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      font-weight: bold;
+      font-size: 16px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px #0f0;
+      cursor: pointer;
+    }
+    .game-over {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.8);
+      color: red;
+      padding: 30px;
+      font-size: 30px;
+      border: 2px solid red;
+      display: none;
+      box-shadow: 0 0 20px red;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐍 Neon Snake</h1>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="info">
+    <p id="score">Score: 0</p>
+    <p id="highScore">High Score: 0</p>
+  </div>
+  <div class="controls">
+    <button onclick="startGame()">🔁 Restart</button>
+    <button onclick="toggleSound()" id="soundBtn">🔊 Sound: ON</button>
+  </div>
+  <div class="game-over" id="gameOverPopup">Game Over</div>
+
+  <audio id="bgMusic" src="assets/bg-music.mp3" loop></audio>
+  <audio id="eatSound" src="assets/click.mp3"></audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const box = 20;
+    let snake, food, dx, dy, score, speed;
+    let soundOn = true;
+
+    const eatSound = document.getElementById("eatSound");
+    const bgMusic = document.getElementById("bgMusic");
+    const scoreDisplay = document.getElementById("score");
+    const highScoreDisplay = document.getElementById("highScore");
+    const gameOverPopup = document.getElementById("gameOverPopup");
+
+    document.addEventListener("keydown", changeDirection);
+
+    function startGame() {
+      snake = [ { x: 9 * box, y: 9 * box } ];
+      dx = box;
+      dy = 0;
+      food = randomFood();
+      score = 0;
+      speed = 150;
+      gameOverPopup.style.display = "none";
+      updateScore();
+      clearInterval(game);
+      game = setInterval(draw, speed);
+      if (soundOn) bgMusic.play();
+    }
+
+    function randomFood() {
+      return {
+        x: Math.floor(Math.random() * 20) * box,
+        y: Math.floor(Math.random() * 20) * box,
+      };
+    }
+
+    function draw() {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "lime" : "#0f0";
+        ctx.shadowColor = "#0f0";
+        ctx.shadowBlur = 10;
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      ctx.fillStyle = "red";
+      ctx.shadowColor = "red";
+      ctx.shadowBlur = 20;
+      ctx.fillRect(food.x, food.y, box, box);
+
+      let headX = snake[0].x + dx;
+      let headY = snake[0].y + dy;
+
+      if (headX === food.x && headY === food.y) {
+        snake.unshift({ x: headX, y: headY });
+        food = randomFood();
+        score++;
+        if (soundOn) eatSound.play();
+        updateScore();
+        if (speed > 50) {
+          speed -= 5;
+          clearInterval(game);
+          game = setInterval(draw, speed);
+        }
+      } else {
+        snake.pop();
+        snake.unshift({ x: headX, y: headY });
+      }
+
+      if (headX < 0 || headX >= canvas.width || headY < 0 || headY >= canvas.height || collision(snake)) {
+        clearInterval(game);
+        gameOverPopup.style.display = "block";
+        bgMusic.pause();
+      }
+    }
+
+    function changeDirection(e) {
+      const key = e.key;
+      if (key === "ArrowLeft" && dx === 0) {
+        dx = -box;
+        dy = 0;
+      } else if (key === "ArrowUp" && dy === 0) {
+        dx = 0;
+        dy = -box;
+      } else if (key === "ArrowRight" && dx === 0) {
+        dx = box;
+        dy = 0;
+      } else if (key === "ArrowDown" && dy === 0) {
+        dx = 0;
+        dy = box;
+      }
+    }
+
+    function collision(snakeArr) {
+      for (let i = 1; i < snakeArr.length; i++) {
+        if (snakeArr[0].x === snakeArr[i].x && snakeArr[0].y === snakeArr[i].y) return true;
+      }
+      return false;
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `Score: ${score}`;
+      let high = localStorage.getItem("snakeHigh") || 0;
+      if (score > high) {
+        localStorage.setItem("snakeHigh", score);
+      }
+      highScoreDisplay.textContent = `High Score: ${localStorage.getItem("snakeHigh")}`;
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById("soundBtn").textContent = `🔊 Sound: ${soundOn ? "ON" : "OFF"}`;
+      if (soundOn) bgMusic.play();
+      else bgMusic.pause();
+    }
+
+    let game;
+    window.onload = startGame;
+  </script>
+</body>
+</html>
