@@ -16,10 +16,17 @@ const canvasSize = 400;
 let snake, food, direction, score, speed, game;
 let soundOn = true;
 
+function randomFood() {
+  return {
+    x: Math.floor(Math.random() * (canvasSize / box)) * box,
+    y: Math.floor(Math.random() * (canvasSize / box)) * box,
+  };
+}
+
 function initGame() {
   snake = [{ x: 9 * box, y: 9 * box }];
   food = randomFood();
-  direction = null;
+  direction = "RIGHT"; // Start moving
   score = 0;
   speed = 150;
   updateScore();
@@ -36,13 +43,6 @@ function updateScore() {
   highScoreDisplay.textContent = `High Score: ${localStorage.getItem("snakeHighScore")}`;
 }
 
-function randomFood() {
-  return {
-    x: Math.floor(Math.random() * 19 + 1) * box,
-    y: Math.floor(Math.random() * 19 + 1) * box,
-  };
-}
-
 function drawGame() {
   ctx.clearRect(0, 0, canvasSize, canvasSize);
 
@@ -56,6 +56,7 @@ function drawGame() {
   ctx.fillStyle = "red";
   ctx.fillRect(food.x, food.y, box, box);
 
+  // Movement
   let snakeX = snake[0].x;
   let snakeY = snake[0].y;
 
@@ -64,13 +65,12 @@ function drawGame() {
   if (direction === "UP") snakeY -= box;
   if (direction === "DOWN") snakeY += box;
 
+  // Eating food
   if (snakeX === food.x && snakeY === food.y) {
-    score++;
     if (soundOn) clickSound.play();
-    food = randomFood();
+    score++;
     updateScore();
-
-    // Increase speed
+    food = randomFood();
     if (speed > 50) {
       speed -= 5;
       clearInterval(game);
@@ -82,20 +82,22 @@ function drawGame() {
 
   const newHead = { x: snakeX, y: snakeY };
 
+  // Collision
   if (
     snakeX < 0 || snakeX >= canvasSize ||
     snakeY < 0 || snakeY >= canvasSize ||
-    collision(newHead, snake)
+    isColliding(newHead, snake)
   ) {
     clearInterval(game);
-    alert("Game Over! Score: " + score);
+    alert("Game Over! Final Score: " + score);
+    return;
   }
 
   snake.unshift(newHead);
 }
 
-function collision(head, array) {
-  return array.some(segment => segment.x === head.x && segment.y === head.y);
+function isColliding(head, body) {
+  return body.some(segment => segment.x === head.x && segment.y === head.y);
 }
 
 function setDirection(e) {
@@ -107,9 +109,11 @@ function setDirection(e) {
 
 document.addEventListener("keydown", setDirection);
 restartBtn.addEventListener("click", initGame);
+
 themeToggle.addEventListener("click", () => {
   document.body.classList.toggle("light-theme");
 });
+
 soundToggle.addEventListener("click", () => {
   soundOn = !soundOn;
   soundToggle.textContent = `🔊 Sound: ${soundOn ? "ON" : "OFF"}`;
@@ -119,6 +123,6 @@ soundToggle.addEventListener("click", () => {
 
 window.onload = () => {
   initGame();
-  bgMusic.volume = 0.5;
+  bgMusic.volume = 0.3;
   bgMusic.play();
 };
